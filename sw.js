@@ -3,12 +3,13 @@
  * (Complete / Snooze 5m), badge counts, and offline PWA caching.
  */
 
-const CACHE_NAME = 'keepit-pwa-v1';
+const CACHE_NAME = 'keepit-pwa-v2';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './manifest.json',
-  './icon.svg'
+  './icon.svg',
+  './seven_am_sunlight.mp4'
 ];
 
 let swReminders = [];
@@ -123,7 +124,7 @@ async function showKeepItNotification(payload) {
     badge: './icon.svg',
     tag: tag || `keepit-${reminderId || Date.now()}`,
     renotify: true,
-    requireInteraction: !isEarly,
+    requireInteraction: true,
     vibrate: [220, 100, 220, 100, 300],
     data: {
       reminderId: reminderId || null,
@@ -132,7 +133,7 @@ async function showKeepItNotification(payload) {
     actions: reminderId
       ? [
           { action: 'complete', title: '✓ Complete' },
-          { action: 'snooze', title: '⏰ Snooze 5m' }
+          { action: 'dismiss', title: '✕ Dismiss' }
         ]
       : []
   };
@@ -159,6 +160,17 @@ self.addEventListener('message', (event) => {
       swFiredKeys.add(data.payload.tag);
     }
     showKeepItNotification(data.payload || {});
+  } else if (data.type === 'CLOSE_REMINDER_NOTIFICATION') {
+    const rmId = data.reminderId;
+    if (self.registration && typeof self.registration.getNotifications === 'function') {
+      self.registration.getNotifications().then((list) => {
+        list.forEach((n) => {
+          if (!rmId || (n.tag && String(n.tag).startsWith(String(rmId))) || (n.data && n.data.reminderId === rmId)) {
+            n.close();
+          }
+        });
+      }).catch(() => {});
+    }
   }
 });
 
@@ -197,6 +209,22 @@ self.addEventListener('notificationclick', (event) => {
       if (self.clients.openWindow) {
         const actionHash = reminderId ? `#reminder&rmAction=${encodeURIComponent(action)}&rmId=${encodeURIComponent(reminderId)}` : targetUrl;
         return self.clients.openWindow(actionHash);
+      }
+    })
+  );
+});
+
+self.addEventListener('notificationclose', (event) => {
+  const reminderId = event.notification.data && event.notification.data.reminderId;
+  if (!reminderId) return;
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        client.postMessage({
+          type: 'REMINDER_NOTIFICATION_ACTION',
+          action: 'dismiss',
+          reminderId: reminderId
+        });
       }
     })
   );

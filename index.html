@@ -956,6 +956,12 @@
     border-radius: 50%;
     border: 1.5px solid #9ca3af;
   }
+  .rm-try-chev {
+    color: #9ca3af;
+    flex-shrink: 0;
+    align-self: center;
+    margin-left: 4px;
+  }
 
   /* Add Reminder Bottom Sheet Modal */
   .rm-sheet-overlay {
@@ -2249,9 +2255,10 @@
   };
   let currentBillingCycle = 'annual';
   let adminSessionUnlocked = false;
-  const ADMIN_EMAILS = ['saurabh.7409019134@gmail.com', 'demo@keepit.app'];
+  const ADMIN_EMAILS = ['saurabh.7409019134@gmail.com', 'saurabh7409019134@gmail.com'];
   function isCurrentUserAdmin(){
-    return true;
+    if(!currentUserEmail || typeof currentUserEmail !== 'string') return false;
+    return ADMIN_EMAILS.includes(currentUserEmail.trim().toLowerCase());
   }
 
   let pricingModalReason = 'general';
@@ -2567,6 +2574,7 @@
   }
 
   function openAdminModal(){
+    if(!isCurrentUserAdmin()) return;
     renderAdminModal();
   }
   function closeAdminModal(){
@@ -2577,6 +2585,10 @@
   async function renderAdminModal(){
     const root = document.getElementById('adminModalRoot');
     if(!root) return;
+    if(!isCurrentUserAdmin()){
+      root.innerHTML = '';
+      return;
+    }
 
     if(!adminSessionUnlocked){
       root.innerHTML = `
@@ -2945,16 +2957,181 @@
     scheduleSave();
   }
 
-  // ---------- 6pm reminder: sound ----------
+  // ---------- Notification Sound (seven_am_sunlight.mp4) & 5m-Ring / 5m-Break / 5m-Ring Cycle ----------
+  const NOTIFICATION_SOUND_SRC = './seven_am_sunlight.mp4';
+  const NOTIFICATION_RING_DURATION_MS = 5 * 60 * 1000;  // 5 minutes of continuous repeat
+  const NOTIFICATION_BREAK_DURATION_MS = 5 * 60 * 1000; // 5 minutes of break before resuming
+
   let audioCtx = null;
   let beepIntervalId = null;
+  let notificationAudioEl = null;
+  let notificationAudioBuffer = null;
+  let notificationBufferLoading = false;
+  let notificationBufferSource = null;
+  let notificationBufferGain = null;
+  let notificationPreviewTimeout = null;
+  let isNotificationSoundLooping = false;
+
   function ensureAudioCtx(){
     if(!audioCtx){
       try{ audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }catch(e){ /* unsupported */ }
     } else if(audioCtx.state === 'suspended'){
-      audioCtx.resume();
+      audioCtx.resume().catch(() => {});
     }
   }
+
+  function ensureNotificationAudioElement(){
+    if(!notificationAudioEl && typeof Audio !== 'undefined'){
+      try {
+        notificationAudioEl = new Audio(NOTIFICATION_SOUND_SRC);
+        notificationAudioEl.preload = 'auto';
+        notificationAudioEl.loop = true;
+        notificationAudioEl.playsInline = true;
+      } catch(e){}
+    }
+    return notificationAudioEl;
+  }
+
+  function preloadNotificationAudioBuffer(){
+    if(notificationAudioBuffer || notificationBufferLoading) return;
+    notificationBufferLoading = true;
+    fetch(NOTIFICATION_SOUND_SRC)
+      .then(res => res.ok ? res.arrayBuffer() : Promise.reject(new Error('load failed')))
+      .then(buf => {
+        ensureAudioCtx();
+        if(!audioCtx) return null;
+        return new Promise((resolve, reject) => {
+          audioCtx.decodeAudioData(buf, resolve, reject);
+        });
+      })
+      .then(decoded => {
+        if(decoded) notificationAudioBuffer = decoded;
+      })
+      .catch(() => {})
+      .finally(() => {
+        notificationBufferLoading = false;
+      });
+  }
+
+  // Unlock audio playback on first user gesture so scheduled reminders can play seven_am_sunlight.mp4 freely
+  function unlockNotificationAudioOnGesture(){
+    ensureAudioCtx();
+    ensureNotificationAudioElement();
+    preloadNotificationAudioBuffer();
+  }
+  document.addEventListener('pointerdown', unlockNotificationAudioOnGesture, { once: true, passive: true });
+  document.addEventListener('keydown', unlockNotificationAudioOnGesture, { once: true, passive: true });
+
+  function getVolumeForSoundLevel(soundLevel){
+    const level = soundLevel || 'Strong';
+    if(level === 'Silent') return 0;
+    if(level === 'Soft') return 0.35;
+    if(level === 'Medium') return 0.68;
+    return 1.0;
+  }
+
+  function stopNotificationBufferSource(){
+    if(notificationBufferSource){
+      try { notificationBufferSource.stop(0); } catch(_){}
+      try { notificationBufferSource.disconnect(); } catch(_){}
+      notificationBufferSource = null;
+    }
+    if(notificationBufferGain){
+      try { notificationBufferGain.disconnect(); } catch(_){}
+      notificationBufferGain = null;
+    }
+  }
+
+  function startNotificationBufferFallbackLoop(vol){
+    ensureAudioCtx();
+    if(!audioCtx) return false;
+    stopNotificationBufferSource();
+    if(notificationAudioBuffer){
+      try {
+        const src = audioCtx.createBufferSource();
+        const gain = audioCtx.createGain();
+        src.buffer = notificationAudioBuffer;
+        src.loop = true;
+        gain.gain.value = vol;
+        src.connect(gain);
+        gain.connect(audioCtx.destination);
+        src.start(0);
+        notificationBufferSource = src;
+        notificationBufferGain = gain;
+        return true;
+      } catch(_){}
+    }
+    return false;
+  }
+
+  function startNotificationSoundLoop(soundLevel){
+    const level = soundLevel || (typeof reminderSoundValue !== 'undefined' ? reminderSoundValue : 'Strong');
+    clearTimeout(notificationPreviewTimeout);
+    notificationPreviewTimeout = null;
+    if(level === 'Silent'){
+      stopNotificationSoundLoop();
+      return;
+    }
+    const vol = getVolumeForSoundLevel(level);
+    isNotificationSoundLooping = true;
+
+    try {
+      if(navigator.vibrate){
+        navigator.vibrate(level === 'Strong' ? [220, 100, 220, 100, 300] : [160, 80, 160]);
+      }
+    } catch(_){}
+
+    ensureAudioCtx();
+    preloadNotificationAudioBuffer();
+    stopNotificationBufferSource();
+    clearInterval(beepIntervalId);
+    beepIntervalId = null;
+
+    const el = ensureNotificationAudioElement();
+    if(el){
+      try {
+        el.loop = true;
+        el.volume = vol;
+        if(el.paused){
+          el.currentTime = 0;
+        }
+        const playPromise = el.play();
+        if(playPromise && typeof playPromise.catch === 'function'){
+          playPromise.catch(() => {
+            if(!isNotificationSoundLooping) return;
+            if(!startNotificationBufferFallbackLoop(vol)){
+              beepOnce();
+              clearInterval(beepIntervalId);
+              beepIntervalId = setInterval(beepOnce, 1200);
+            }
+          });
+        }
+        return;
+      } catch(_){}
+    }
+
+    if(!startNotificationBufferFallbackLoop(vol)){
+      beepOnce();
+      clearInterval(beepIntervalId);
+      beepIntervalId = setInterval(beepOnce, 1200);
+    }
+  }
+
+  function stopNotificationSoundLoop(){
+    isNotificationSoundLooping = false;
+    clearTimeout(notificationPreviewTimeout);
+    notificationPreviewTimeout = null;
+    clearInterval(beepIntervalId);
+    beepIntervalId = null;
+    stopNotificationBufferSource();
+    if(notificationAudioEl){
+      try {
+        notificationAudioEl.pause();
+        notificationAudioEl.currentTime = 0;
+      } catch(_){}
+    }
+  }
+
   function beepOnce(){
     if(!audioCtx) return;
     try{
@@ -2969,17 +3146,13 @@
     }catch(e){ /* ignore */ }
   }
   function startBeeping(){
-    ensureAudioCtx();
-    beepOnce();
-    clearInterval(beepIntervalId);
-    beepIntervalId = setInterval(beepOnce, 700);
+    startNotificationSoundLoop('Strong');
   }
   function stopBeeping(){
-    clearInterval(beepIntervalId);
-    beepIntervalId = null;
+    stopNotificationSoundLoop();
   }
 
-  // ---------- 6pm reminder: scheduling ----------
+  // ---------- 6pm reminder: scheduling (5m repeat -> 5m break -> 5m repeat -> stop) ----------
   let reminderModalOpen = false;
   let reminderRingTimer = null;
 
@@ -2992,7 +3165,7 @@
     if(!data || !data.notifyEnabled) return;
     const today = dateKey(new Date());
     if(!data.reminder || data.reminder.date !== today){
-      data.reminder = { date: today, attempt: 0, firstAttemptAt: null, done: false };
+      data.reminder = { date: today, attempt: 0, firstAttemptAt: null, firstAttemptEndedAt: null, done: false };
       scheduleSave();
     }
     const r = data.reminder;
@@ -3002,8 +3175,9 @@
       if(now.getHours() === 18 && now.getMinutes() === 0){
         triggerReminderAttempt(1);
       }
-    } else if(r.attempt === 1 && r.firstAttemptAt){
-      if(Date.now() - r.firstAttemptAt >= 5*60*1000){
+    } else if(r.attempt === 1){
+      const breakRef = r.firstAttemptEndedAt || (r.firstAttemptAt ? r.firstAttemptAt + NOTIFICATION_RING_DURATION_MS : null);
+      if(breakRef && Date.now() - breakRef >= NOTIFICATION_BREAK_DURATION_MS){
         triggerReminderAttempt(2);
       }
     }
@@ -3031,12 +3205,15 @@
       stopBeeping();
       closeReminderModal();
       reminderModalOpen = false;
-      if(attemptNum >= 2){
+      if(attemptNum === 1 && data && data.reminder){
+        data.reminder.firstAttemptEndedAt = Date.now();
+        scheduleSave();
+      } else if(attemptNum >= 2 && data && data.reminder){
         data.reminder.done = true;
         scheduleSave();
       }
-      // if attemptNum === 1, checkReminder() will fire attempt 2 five minutes after firstAttemptAt
-    }, 60*1000);
+      // If attemptNum === 1, checkReminder() waits 5 minutes of break and then fires attempt 2 for another 5 minutes
+    }, NOTIFICATION_RING_DURATION_MS);
   }
 
   function resolveReminder(action){
@@ -3855,34 +4032,125 @@
     return null;
   }
 
-  // Synthesize pleasant Web Audio chime according to reminder sound setting
-  function playReminderChime(soundLevel){
-    const level = soundLevel || reminderSoundValue || 'Strong';
-    if(level === 'Silent') return;
+  let reminderCycleBreakTimer = null;
+  let reminderCycleResumeTimer = null;
+  let reminderCycleFinalStopTimer = null;
+  let activeNativeNotificationObj = null;
+
+  function clearReminderCycleTimers(){
+    clearTimeout(reminderCycleBreakTimer);
+    reminderCycleBreakTimer = null;
+    clearTimeout(reminderCycleResumeTimer);
+    reminderCycleResumeTimer = null;
+    clearTimeout(reminderCycleFinalStopTimer);
+    reminderCycleFinalStopTimer = null;
+  }
+
+  async function closeActiveNativeNotifications(reminderId){
+    if(activeNativeNotificationObj){
+      try { activeNativeNotificationObj.close(); } catch(_){}
+      activeNativeNotificationObj = null;
+    }
     try {
-      if(navigator.vibrate){
-        navigator.vibrate(level === 'Strong' ? [220, 100, 220, 100, 300] : [160, 80, 160]);
+      if(swRegistrationRef && typeof swRegistrationRef.getNotifications === 'function'){
+        const list = await swRegistrationRef.getNotifications();
+        list.forEach(n => {
+          if(!reminderId || (n.tag && String(n.tag).startsWith(String(reminderId))) || (n.data && n.data.reminderId === reminderId)){
+            try { n.close(); } catch(_){}
+          }
+        });
       }
     } catch(_){}
     try {
-      ensureAudioCtx();
-      if(!audioCtx) return;
-      const gainVal = level === 'Soft' ? 0.08 : (level === 'Medium' ? 0.18 : 0.3);
-      const notes = level === 'Soft' ? [587.33, 880] : (level === 'Medium' ? [523.25, 659.25, 783.99] : [523.25, 659.25, 783.99, 1046.5]);
-      notes.forEach((freq, idx) => {
-        const start = audioCtx.currentTime + idx * 0.14;
-        const osc = audioCtx.createOscillator();
-        const g = audioCtx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(freq, start);
-        g.gain.setValueAtTime(0.0001, start);
-        g.gain.exponentialRampToValueAtTime(gainVal, start + 0.02);
-        g.gain.exponentialRampToValueAtTime(0.0001, start + 0.32);
-        osc.connect(g).connect(audioCtx.destination);
-        osc.start(start);
-        osc.stop(start + 0.34);
-      });
+      if('serviceWorker' in navigator && navigator.serviceWorker.controller){
+        navigator.serviceWorker.controller.postMessage({
+          type: 'CLOSE_REMINDER_NOTIFICATION',
+          reminderId: reminderId || null
+        });
+      }
     } catch(_){}
+  }
+
+  function stopReminderAlertCycle(matchingId){
+    if(matchingId && activeDueReminderAlert && activeDueReminderAlert.id !== matchingId){
+      return;
+    }
+    const targetId = activeDueReminderAlert ? activeDueReminderAlert.id : matchingId;
+    clearReminderCycleTimers();
+    stopNotificationSoundLoop();
+    closeActiveNativeNotifications(targetId);
+    if(activeDueReminderAlert && (!matchingId || activeDueReminderAlert.id === matchingId)){
+      activeDueReminderAlert = null;
+      renderLiveDueReminderBanner();
+    }
+  }
+
+  // Play a short preview of seven_am_sunlight.mp4 when selecting sound strength in Add Reminder sheet
+  function playReminderChime(soundLevel){
+    const level = soundLevel || reminderSoundValue || 'Strong';
+    if(level === 'Silent'){
+      if(!activeDueReminderAlert) stopNotificationSoundLoop();
+      return;
+    }
+    // If an active reminder alert cycle is currently ringing, keep it looping at the selected level
+    if(activeDueReminderAlert && activeDueReminderAlert._cyclePhase !== 'break'){
+      startNotificationSoundLoop(level);
+      return;
+    }
+    startNotificationSoundLoop(level);
+    clearTimeout(notificationPreviewTimeout);
+    notificationPreviewTimeout = setTimeout(() => {
+      if(!activeDueReminderAlert){
+        stopNotificationSoundLoop();
+      }
+    }, 4500);
+  }
+
+  // Start the 5-minute repeat -> 5-minute break -> 5-minute repeat -> auto-stop notification cycle
+  function startReminderAlertCycle(item, isEarly){
+    if(!item) return;
+    clearReminderCycleTimers();
+    stopNotificationSoundLoop();
+
+    const soundLevel = item.sound || (isEarly ? 'Medium' : 'Strong');
+    const alertCopy = Object.assign({}, item, {
+      _isEarlyAlertBanner: Boolean(isEarly),
+      _cyclePhase: 'ringing-1'
+    });
+    activeDueReminderAlert = alertCopy;
+    renderLiveDueReminderBanner();
+    startNotificationSoundLoop(soundLevel);
+    triggerNativeReminderNotification(item, isEarly);
+
+    // 1. After 5 minutes of continuous repeat: pause for a 5-minute break if user hasn't completed or dismissed
+    reminderCycleBreakTimer = setTimeout(() => {
+      if(!activeDueReminderAlert || activeDueReminderAlert.id !== item.id) return;
+      stopNotificationSoundLoop();
+      activeDueReminderAlert._cyclePhase = 'break';
+      renderLiveDueReminderBanner();
+
+      // 2. After 5 minutes of break: resume playing seven_am_sunlight.mp4 on repeat for another 5 minutes
+      reminderCycleResumeTimer = setTimeout(() => {
+        if(!activeDueReminderAlert || activeDueReminderAlert.id !== item.id) return;
+        // Verify reminder wasn't completed or deleted in the meantime
+        const isTest = String(item.id).startsWith('test-');
+        const stillPending = isTest || reminderItems.some(r => r.id === item.id && !r.completed);
+        if(!stillPending){
+          stopReminderAlertCycle(item.id);
+          return;
+        }
+        activeDueReminderAlert._cyclePhase = 'ringing-2';
+        renderLiveDueReminderBanner();
+        startNotificationSoundLoop(soundLevel);
+        triggerNativeReminderNotification(item, isEarly);
+
+        // 3. After the second 5-minute repeat window: if user still hasn't replied, stop notification & sound
+        reminderCycleFinalStopTimer = setTimeout(() => {
+          if(!activeDueReminderAlert || activeDueReminderAlert.id !== item.id) return;
+          stopReminderAlertCycle(item.id);
+        }, NOTIFICATION_RING_DURATION_MS);
+      }, NOTIFICATION_BREAK_DURATION_MS);
+    }, NOTIFICATION_RING_DURATION_MS);
   }
 
   function syncRemindersToServiceWorker(){
@@ -3922,12 +4190,12 @@
           badge: './icon.svg',
           tag,
           renotify: true,
-          requireInteraction: !isEarly,
+          requireInteraction: true,
           vibrate: [220, 100, 220, 100, 300],
           data: { reminderId: item.id, url: './#reminder' },
           actions: [
             { action: 'complete', title: '✓ Complete' },
-            { action: 'snooze', title: '⏰ Snooze 5m' }
+            { action: 'dismiss', title: '✕ Dismiss' }
           ]
         });
         return;
@@ -3935,11 +4203,16 @@
     } catch(_){}
 
     try {
+      if(activeNativeNotificationObj){
+        try { activeNativeNotificationObj.close(); } catch(_){}
+      }
       const n = new Notification(title, {
         body,
         icon: './icon.svg',
-        tag
+        tag,
+        requireInteraction: true
       });
+      activeNativeNotificationObj = n;
       n.onclick = () => {
         window.focus();
         section = 'reminder';
@@ -3962,6 +4235,10 @@
       return;
     }
     const item = activeDueReminderAlert;
+    const isBreak = item._cyclePhase === 'break';
+    const statusLabel = isBreak
+      ? 'Paused (5m break — will resume)'
+      : (item._isEarlyAlertBanner ? 'Upcoming Reminder Alert' : 'Reminder Due Now');
     const subItems = item.checklist && item.checklist.length
       ? `<div style="font-size:12px;color:#9ca3af;margin-top:4px;">${item.checklist.map(c => '• ' + escapeAttr(c.text || c)).join(' &nbsp; ')}</div>`
       : '';
@@ -3969,10 +4246,10 @@
       <div class="rm-live-alert-overlay" role="alert">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
           <div style="display:flex;align-items:center;gap:12px;min-width:0;flex:1;">
-            <div class="rm-live-alert-bell">🔔</div>
+            <div class="rm-live-alert-bell">${isBreak ? '⏸️' : '🔔'}</div>
             <div style="min-width:0;flex:1;">
-              <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#34d399;">
-                ${item._isEarlyAlertBanner ? 'Upcoming Reminder Alert' : 'Reminder Due Now'}
+              <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:${isBreak ? '#fbbf24' : '#34d399'};">
+                ${statusLabel}
               </div>
               <div style="font-size:16px;font-weight:700;color:#ffffff;margin-top:2px;word-break:break-word;">
                 ${escapeAttr(item.title)}
@@ -3994,6 +4271,9 @@
   }
 
   function handleReminderAlertAction(action, reminderId){
+    // Stop the repeating notification sound & 5m/5m/5m cycle immediately when user replies (complete, dismiss, or snooze)
+    stopReminderAlertCycle(reminderId);
+
     const idx = reminderItems.findIndex(i => i.id === reminderId);
     if(action === 'complete' && idx !== -1){
       const item = reminderItems[idx];
@@ -4031,10 +4311,8 @@
       item.date = `Today, ${formatTime12hFromDate(new Date(snoozeUntil))}`;
       saveReminderState();
       showToast('Snoozed for 5 minutes');
-    }
-    if(activeDueReminderAlert && (!reminderId || activeDueReminderAlert.id === reminderId)){
-      activeDueReminderAlert = null;
-      renderLiveDueReminderBanner();
+    } else if(action === 'dismiss'){
+      showToast('Reminder notification dismissed');
     }
     if(section === 'reminder') renderReminderSection();
   }
@@ -4056,20 +4334,14 @@
       if(item.earlyAlertAt && !item.notifiedEarly && now >= item.earlyAlertAt){
         item.notifiedEarly = true;
         changed = true;
-        playReminderChime(item.sound || 'Medium');
-        triggerNativeReminderNotification(item, true);
-        activeDueReminderAlert = Object.assign({}, item, { _isEarlyAlertBanner: true });
-        renderLiveDueReminderBanner();
+        startReminderAlertCycle(item, true);
       }
 
       // 2. Check Main Due Alert
       if(item.alertAt && !item.notifiedMain && now >= item.alertAt){
         item.notifiedMain = true;
         changed = true;
-        playReminderChime(item.sound || 'Strong');
-        triggerNativeReminderNotification(item, false);
-        activeDueReminderAlert = Object.assign({}, item, { _isEarlyAlertBanner: false });
-        renderLiveDueReminderBanner();
+        startReminderAlertCycle(item, false);
       }
     }
     if(changed){
@@ -4080,17 +4352,18 @@
 
   async function requestKeepItNotificationPermission(runTestAfter){
     ensureAudioCtx();
+    ensureNotificationAudioElement();
+    preloadNotificationAudioBuffer();
     if(typeof Notification === 'undefined'){
       showToast('System notifications require a supported browser or Home Screen app');
-      if(runTestAfter){
-        playReminderChime('Strong');
-        activeDueReminderAlert = {
+      if(runTestAfter && isCurrentUserAdmin()){
+        startReminderAlertCycle({
           id: 'test-' + Date.now(),
           title: 'KeepIt Test Reminder Alert!',
           date: 'Today, ' + formatTime12hFromDate(new Date()),
-          checklist: [{ text: 'Sound chime & live alert banner working!', done: false }]
-        };
-        renderLiveDueReminderBanner();
+          sound: 'Strong',
+          checklist: [{ text: 'Notification sound & live alert banner working!', done: false }]
+        }, false);
       }
       return;
     }
@@ -4101,22 +4374,22 @@
         localStorage.setItem('keepit_rm_notify_enabled_v1', 'true');
         data.notifyEnabled = true;
         scheduleSave();
-        playReminderChime('Strong');
-        await triggerNativeReminderNotification({
-          id: 'test-notif-' + Date.now(),
-          title: runTestAfter ? 'KeepIt Test Reminder' : 'KeepIt Notifications Enabled!',
-          date: 'Today, ' + formatTime12hFromDate(new Date()),
-          checklist: [{ text: 'You will now receive alerts when reminders are due.', done: false }]
-        }, false);
-        if(runTestAfter){
-          activeDueReminderAlert = {
+        if(runTestAfter && isCurrentUserAdmin()){
+          startReminderAlertCycle({
             id: 'test-notif-' + Date.now(),
             title: 'KeepIt Test Reminder',
             date: 'Today, ' + formatTime12hFromDate(new Date()),
-            checklist: [{ text: 'System notification + sound chime verified!', done: false }]
-          };
-          renderLiveDueReminderBanner();
+            sound: 'Strong',
+            checklist: [{ text: 'System notification + repeating sound verified!', done: false }]
+          }, false);
         } else {
+          playReminderChime('Strong');
+          await triggerNativeReminderNotification({
+            id: 'test-notif-' + Date.now(),
+            title: 'KeepIt Notifications Enabled!',
+            date: 'Today, ' + formatTime12hFromDate(new Date()),
+            checklist: [{ text: 'You will now receive alerts when reminders are due.', done: false }]
+          }, false);
           showToast('Notifications enabled!');
         }
       } else if(perm === 'denied'){
@@ -4312,59 +4585,57 @@
     }
 
     if(reminderMenuPage === 'tryTheseOut'){
+      const chevSvg = `<svg class="rm-try-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>`;
       return `
         <div class="rm-try-popup" id="rmTryPopup">
           <div class="rm-try-header">Try these out</div>
 
-          <div class="rm-try-card" data-try-template="workout">
+          <div class="rm-try-card" data-try-template="readbook">
             ${bulbSvg}
             <div class="rm-try-body">
-              <div class="rm-try-title">Workout schedule</div>
-              <div class="rm-try-sub">Every Tue and Thu at 7 PM</div>
+              <div class="rm-try-title">Read book</div>
+              <div class="rm-try-sub">Every day at 8 PM</div>
             </div>
+            ${chevSvg}
           </div>
 
-          <div class="rm-try-card" data-try-template="payment">
+          <div class="rm-try-card" data-try-template="learnskill">
             ${bulbSvg}
             <div class="rm-try-body">
-              <div class="rm-try-title">Monthly payment reminder</div>
-              <div class="rm-try-sub">Every month on the 25th</div>
+              <div class="rm-try-title">Learn a skill</div>
+              <div class="rm-try-sub">Every day at 7 PM</div>
             </div>
+            ${chevSvg}
           </div>
 
-          <div class="rm-try-card" data-try-template="pickup">
+          <div class="rm-try-card" data-try-template="replyclint">
             ${bulbSvg}
             <div class="rm-try-body">
-              <div class="rm-try-title">Pickup reminder</div>
-              <div class="rm-try-sub">When leaving home</div>
+              <div class="rm-try-title">Reply to Clint</div>
+              <div class="rm-try-sub">Every day at 11 AM</div>
             </div>
+            ${chevSvg}
           </div>
 
-          <div class="rm-try-card" data-try-template="gethome">
+          <div class="rm-try-card" data-try-template="contentcreation">
             ${bulbSvg}
             <div class="rm-try-body">
-              <div class="rm-try-title">Reminder for when you get home</div>
-              <div class="rm-try-sub">Every day at 8 PM or when you arrive at home</div>
+              <div class="rm-try-title">Content creation</div>
+              <div class="rm-try-sub">Every day at 6:30 PM</div>
             </div>
+            ${chevSvg}
           </div>
 
-          <div class="rm-try-card" data-try-template="selfcare">
+          <div class="rm-try-card" data-try-template="eveningreview">
             ${bulbSvg}
             <div class="rm-try-body">
-              <div class="rm-try-title">Self-care checklist</div>
+              <div class="rm-try-title">Evening review &amp; tomorrow's plan</div>
+              <div class="rm-try-sub">Every day at 9:30 PM</div>
               <div class="rm-try-checklist">
-                <div class="rm-try-check-row"><span class="rm-try-check-circle"></span><span>Drink water</span></div>
-                <div class="rm-try-check-row"><span class="rm-try-check-circle"></span><span>Meditate for 10 minutes</span></div>
-                <div class="rm-try-check-row"><span class="rm-try-check-circle"></span><span>Get 7-9 hours of sleep</span></div>
+                <div class="rm-try-check-row"><span class="rm-try-check-circle"></span><span>Review completed tasks</span></div>
+                <div class="rm-try-check-row"><span class="rm-try-check-circle"></span><span>Reschedule unfinished tasks</span></div>
+                <div class="rm-try-check-row"><span class="rm-try-check-circle"></span><span>Plan tomorrow</span></div>
               </div>
-            </div>
-          </div>
-
-          <div class="rm-try-card" data-try-template="library">
-            ${bulbSvg}
-            <div class="rm-try-body">
-              <div class="rm-try-title">Return library books</div>
-              <div class="rm-try-sub">23 Oct</div>
             </div>
           </div>
         </div>
@@ -4491,6 +4762,7 @@
     const hasNotifApi = typeof Notification !== 'undefined';
     const perm = hasNotifApi ? Notification.permission : 'default';
     const isGranted = perm === 'granted' && reminderNotificationsEnabled;
+    const isAdmin = isCurrentUserAdmin();
 
     if(isGranted){
       return `
@@ -4503,7 +4775,9 @@
             ${deferredPwaInstallPrompt ? `
               <button type="button" class="rm-notify-btn-secondary" data-act="install-pwa-app" title="Install KeepIt App">📲 Install App</button>
             ` : ''}
-            <button type="button" class="rm-notify-btn-secondary" data-act="test-reminder-alert" title="Send a test notification &amp; sound chime">🔊 Test Alert</button>
+            ${isAdmin ? `
+              <button type="button" class="rm-notify-btn-secondary" data-act="test-reminder-alert" title="Send a test notification &amp; sound">🔊 Test Alert</button>
+            ` : ''}
           </div>
         </div>
       `;
@@ -4517,8 +4791,8 @@
             <div class="rm-notify-banner-title">${perm === 'denied' ? 'Browser Notifications Blocked' : 'Enable Reminder Notifications'}</div>
             <div class="rm-notify-banner-sub">
               ${perm === 'denied'
-                ? 'Allow notifications in your browser URL bar (🔒 icon), or tap Test Alert to hear in-app sound chimes.'
-                : 'Turn on system notifications &amp; sound chimes so you never miss a scheduled reminder.'}
+                ? 'Allow notifications in your browser URL bar (🔒 icon) to receive reminder alerts.'
+                : 'Turn on system notifications &amp; sound alerts so you never miss a scheduled reminder.'}
             </div>
           </div>
         </div>
@@ -4526,7 +4800,9 @@
           <button type="button" class="rm-notify-btn-primary" data-act="enable-reminder-notifications">
             ${perm === 'denied' ? 'Retry' : 'Enable'}
           </button>
-          <button type="button" class="rm-notify-btn-secondary" data-act="test-reminder-alert" title="Test sound &amp; alert banner">Test</button>
+          ${isAdmin ? `
+            <button type="button" class="rm-notify-btn-secondary" data-act="test-reminder-alert" title="Test sound &amp; alert banner">Test</button>
+          ` : ''}
         </div>
       </div>
     `;
@@ -5146,7 +5422,9 @@
                 </label>
               </div>
               <div style="display:flex;align-items:center;justify-content:space-between;padding-top:10px;gap:8px;">
-                <button type="button" class="rm-dt-pill" data-act="test-reminder-alert" style="background:#2563eb;color:#ffffff;flex:1;text-align:center;">🔔 Send Test Notification</button>
+                ${isCurrentUserAdmin() ? `
+                  <button type="button" class="rm-dt-pill" data-act="test-reminder-alert" style="background:#2563eb;color:#ffffff;flex:1;text-align:center;">🔔 Send Test Notification</button>
+                ` : ''}
                 <button type="button" class="rm-dt-pill" data-act="install-pwa-app" style="flex:1;text-align:center;">📲 Install App Guide</button>
               </div>
             </div>
@@ -5493,6 +5771,7 @@
         if(act === 'complete'){
           reminderItems.forEach(item => {
             if(reminderSelectedIds.has(item.id)){
+              stopReminderAlertCycle(item.id);
               item.completed = true;
               completedReminderItems.unshift({
                 id: 'c-' + Date.now() + '-' + item.id,
@@ -5544,6 +5823,7 @@
         if(act === 'delete'){
           reminderItems.forEach(item => {
             if(reminderSelectedIds.has(item.id)){
+              stopReminderAlertCycle(item.id);
               recycleBinReminderItems.unshift(item);
             }
           });
@@ -5652,22 +5932,21 @@
         const tpl = tryCard.getAttribute('data-try-template');
         reminderMenuOpen = false;
         reminderMenuPage = 'main';
-        if(tpl === 'workout'){
-          openNewReminderSheet({ title: 'Workout schedule', date: 'Tue, 7:00 pm', repeat: 'Every week', checklist: [] });
-        } else if(tpl === 'payment'){
-          openNewReminderSheet({ title: 'Monthly payment reminder', date: '25 Oct, 9:00 am', repeat: 'Every month', checklist: [] });
-        } else if(tpl === 'pickup'){
-          openNewReminderSheet({ title: 'Pickup reminder', date: null, dateEnabled: false, checklist: [] });
-        } else if(tpl === 'gethome'){
-          openNewReminderSheet({ title: 'Reminder for when you get home', date: 'Today, 8:00 pm', repeat: 'Every day', checklist: [] });
-        } else if(tpl === 'selfcare'){
+        if(tpl === 'readbook'){
+          openNewReminderSheet({ title: 'Read book', date: 'Today, 8:00 pm', repeat: 'Every day', checklist: [] });
+        } else if(tpl === 'learnskill'){
+          openNewReminderSheet({ title: 'Learn a skill', date: 'Today, 7:00 pm', repeat: 'Every day', checklist: [] });
+        } else if(tpl === 'replyclint'){
+          openNewReminderSheet({ title: 'Reply to Clint', date: 'Today, 11:00 am', repeat: 'Every day', checklist: [] });
+        } else if(tpl === 'contentcreation'){
+          openNewReminderSheet({ title: 'Content creation', date: 'Today, 6:30 pm', repeat: 'Every day', checklist: [] });
+        } else if(tpl === 'eveningreview'){
           openNewReminderSheet({
-            title: 'Self-care checklist',
-            date: 'Today, 9:00 am',
-            checklist: ['Drink water', 'Meditate for 10 minutes', 'Get 7-9 hours of sleep']
+            title: "Evening review & tomorrow's plan",
+            date: 'Today, 9:30 pm',
+            repeat: 'Every day',
+            checklist: ['Review completed tasks', 'Reschedule unfinished tasks', 'Plan tomorrow']
           });
-        } else if(tpl === 'library'){
-          openNewReminderSheet({ title: 'Return library books', date: '23 Oct', checklist: [] });
         }
         return;
       }
@@ -5962,24 +6241,25 @@
         return;
       }
 
-      // Test Reminder Alert button (fires real system notification + sound chime + live alert banner)
+      // Test Reminder Alert button (Owner/Admin only: fires real system notification + repeating seven_am_sunlight.mp4 + live alert banner)
       if(e.target.closest('[data-act="test-reminder-alert"]')){
+        if(!isCurrentUserAdmin()) return;
         ensureAudioCtx();
-        playReminderChime('Strong');
+        ensureNotificationAudioElement();
+        preloadNotificationAudioBuffer();
         const testItem = {
           id: 'test-rm-' + Date.now(),
           title: 'KeepIt Test Reminder',
           date: 'Today, ' + formatTime12hFromDate(new Date()),
           repeat: "Don't repeat",
-          checklist: [{ text: 'Notifications & sound chime are working!', done: false }]
+          sound: 'Strong',
+          checklist: [{ text: 'Notifications & repeating sound are working!', done: false }]
         };
-        activeDueReminderAlert = testItem;
-        renderLiveDueReminderBanner();
         if(typeof Notification !== 'undefined' && Notification.permission === 'default'){
           requestKeepItNotificationPermission(true);
         } else {
-          triggerNativeReminderNotification(testItem, false);
-          showToast('Test reminder notification sent!');
+          startReminderAlertCycle(testItem, false);
+          showToast('Test reminder notification started!');
         }
         return;
       }
@@ -6007,6 +6287,7 @@
         } else {
           reminderNotificationsEnabled = false;
           localStorage.setItem('keepit_rm_notify_enabled_v1', 'false');
+          stopReminderAlertCycle();
           showToast('Reminder notifications paused');
           renderReminderSection();
         }
@@ -6217,6 +6498,7 @@
       const checkBtn = e.target.closest('[data-act="toggle-check"]');
       if(checkBtn){
         const id = checkBtn.getAttribute('data-id');
+        stopReminderAlertCycle(id);
         const idx = reminderItems.findIndex(i => i.id === id);
         if(idx !== -1){
           const [item] = reminderItems.splice(idx, 1);
@@ -7340,6 +7622,10 @@
 
   async function handleLogout(){
     if(sb) try{ await sb.auth.signOut(); }catch(e){}
+    stopReminderAlertCycle();
+    stopBeeping();
+    closeAdminModal();
+    adminSessionUnlocked = false;
     setSavedCurrentUser(null);
     currentUserId = null;
     currentUserEmail = null;
@@ -7391,6 +7677,7 @@
 
   document.addEventListener('change', async (e) => {
     if(e.target.id === 'adminSelfTierSelect'){
+      if(!isCurrentUserAdmin()) return;
       data.plan = e.target.value;
       scheduleSave();
       renderAdminModal();
@@ -7399,6 +7686,7 @@
       if(typeof drToast === 'function') drToast('Active plan set to ' + data.plan.toUpperCase());
     }
     if(e.target.matches('[data-admin-user-tier]')){
+      if(!isCurrentUserAdmin()) return;
       const targetEmail = e.target.getAttribute('data-admin-user-tier');
       const newTier = e.target.value;
       if(sb){
