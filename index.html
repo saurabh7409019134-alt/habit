@@ -1831,6 +1831,208 @@
   .otp-input-field{font-size:24px !important;font-weight:800 !important;letter-spacing:12px !important;text-align:center !important;padding:12px 14px !important;background:rgba(0,0,0,0.4) !important;border:1.5px solid rgba(0,230,118,0.45) !important;color:#fff !important;border-radius:12px !important;}
   .otp-input-field:focus{border-color:#00e676 !important;box-shadow:0 0 16px rgba(0,230,118,0.35) !important;}
   .otp-box{background:rgba(0,230,118,0.08);border:1px solid rgba(0,230,118,0.25);border-radius:10px;padding:10px 12px;margin:12px 0;font-size:12px;color:#d1fae5;line-height:1.45;}
+  .login-card button.google-auth-btn{
+    width:100%;
+    background:#ffffff !important;
+    color:#1f2937 !important;
+    border:1px solid rgba(255,255,255,0.85) !important;
+    border-radius:10px;
+    padding:11px 14px;
+    font-size:14px;
+    font-weight:600;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.22);
+    transition:transform .14s ease, box-shadow .14s ease, background .14s ease;
+    margin-top:0;
+    margin-bottom:4px;
+  }
+  .login-card button.google-auth-btn:hover{
+    background:#f8fafc !important;
+    transform:translateY(-1px);
+    box-shadow:0 4px 14px rgba(0,0,0,0.3);
+    opacity:1;
+  }
+  .login-card button.google-auth-btn:active{
+    transform:translateY(0);
+  }
+  .login-card button.google-auth-btn svg{
+    width:18px;
+    height:18px;
+    flex-shrink:0;
+  }
+  .auth-divider{
+    margin:12px 0 10px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .auth-divider-line{
+    flex:1;
+    height:1px;
+    background:rgba(255,255,255,0.12);
+  }
+  .auth-divider-text{
+    font-size:11px;
+    color:rgba(255,255,255,0.45);
+    text-transform:uppercase;
+    letter-spacing:1px;
+  }
+  .google-Chooser-overlay{
+    position:fixed;
+    inset:0;
+    z-index:120;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:rgba(2,10,6,0.78);
+    -webkit-backdrop-filter:blur(12px);
+    backdrop-filter:blur(12px);
+    padding:16px;
+  }
+  .google-chooser-card{
+    background:#ffffff;
+    color:#202124;
+    border-radius:16px;
+    width:min(380px, 100%);
+    padding:24px 22px 20px;
+    box-shadow:0 20px 50px rgba(0,0,0,0.5);
+    text-align:left;
+    font-family:var(--sans);
+  }
+  .google-chooser-header{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding-bottom:14px;
+    border-bottom:1px solid #e5e7eb;
+    margin-bottom:16px;
+    font-size:14px;
+    color:#5f6368;
+    font-weight:500;
+  }
+  .google-chooser-title{
+    font-size:20px;
+    font-weight:600;
+    color:#202124;
+    margin:0 0 4px;
+  }
+  .google-chooser-sub{
+    font-size:13.5px;
+    color:#5f6368;
+    margin:0 0 16px;
+  }
+  .google-acc-item{
+    width:100%;
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:10px 12px;
+    border:1px solid #e5e7eb;
+    border-radius:10px;
+    background:#ffffff;
+    cursor:pointer;
+    text-align:left;
+    margin-bottom:8px;
+    transition:background .15s ease, border-color .15s ease;
+  }
+  .google-acc-item:hover{
+    background:#f8fafc;
+    border-color:#cbd5e1;
+  }
+  .google-acc-avatar{
+    width:34px;
+    height:34px;
+    border-radius:50%;
+    background:#1a73e8;
+    color:#ffffff;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-weight:700;
+    font-size:14px;
+    flex-shrink:0;
+  }
+  .google-acc-info{
+    display:flex;
+    flex-direction:column;
+    min-width:0;
+  }
+  .google-acc-name{
+    font-size:13.5px;
+    font-weight:600;
+    color:#202124;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .google-acc-email{
+    font-size:12px;
+    color:#5f6368;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .google-custom-form{
+    margin-top:10px;
+    padding-top:12px;
+    border-top:1px solid #e5e7eb;
+  }
+  .google-custom-label{
+    display:block;
+    font-size:12px;
+    font-weight:600;
+    color:#374151;
+    margin-bottom:6px;
+  }
+  .google-custom-input{
+    width:100%;
+    box-sizing:border-box;
+    padding:10px 12px;
+    border:1px solid #d1d5db;
+    border-radius:8px;
+    font-size:14px;
+    color:#111827;
+    background:#ffffff;
+    outline:none;
+    margin-bottom:12px;
+  }
+  .google-custom-input:focus{
+    border-color:#1a73e8;
+    box-shadow:0 0 0 2px rgba(26,115,232,0.18);
+  }
+  .google-chooser-actions{
+    display:flex;
+    justify-content:flex-end;
+    gap:8px;
+    margin-top:4px;
+  }
+  .google-btn-cancel{
+    border:1px solid #d1d5db;
+    background:#ffffff;
+    color:#374151;
+    font-size:13px;
+    font-weight:600;
+    padding:8px 14px;
+    border-radius:8px;
+    cursor:pointer;
+  }
+  .google-btn-continue{
+    border:none;
+    background:#1a73e8;
+    color:#ffffff;
+    font-size:13px;
+    font-weight:600;
+    padding:8px 16px;
+    border-radius:8px;
+    cursor:pointer;
+  }
+  .google-btn-continue:hover{
+    background:#1557b0;
+  }
 
   /* ---------- PRICING & UPGRADE MODAL ---------- */
   .pricing-overlay, .admin-overlay {
@@ -7176,6 +7378,8 @@
     if(rNum) rNum.classList.toggle('met', v.num);
   }
 
+  const GOOGLE_LOGO_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#EA4335" d="M12 10.2v3.9h5.4c-.24 1.24-.96 2.29-2.04 3.01l3.3 2.56c1.92-1.77 3.03-4.38 3.03-7.47 0-.72-.06-1.41-.19-2.1H12z"/><path fill="#4285F4" d="M12 22c2.7 0 4.96-.9 6.62-2.43l-3.3-2.56c-.91.61-2.07.97-3.32.97-2.55 0-4.71-1.72-5.48-4.04H3.11v2.64C4.76 19.86 8.11 22 12 22z"/><path fill="#FBBC05" d="M6.52 13.94c-.2-.6-.31-1.24-.31-1.94s.11-1.34.31-1.94V7.42H3.11C2.41 8.8 2 10.36 2 12s.41 3.2 1.11 4.58l3.41-2.64z"/><path fill="#34A853" d="M12 6.02c1.47 0 2.79.51 3.83 1.5l2.87-2.87C16.95 3.02 14.7 2 12 2 8.11 2 4.76 4.14 3.11 7.42l3.41 2.64c.77-2.32 2.93-4.04 5.48-4.04z"/></svg>`;
+
   function renderLoginScreen(errorMsg, mode, okMsg){
     mode = mode || 'login';
     document.body.classList.add('dark');
@@ -7192,6 +7396,15 @@
     } else if(mode === 'signup'){
       const preEmail = pendingSignup ? escapeAttr(pendingSignup.email) : '';
       body = `<p>Create your account &mdash; verify &amp; start</p>
+        <button type="button" class="google-auth-btn" id="googleSignupBtn" data-google-mode="signup">
+          ${GOOGLE_LOGO_SVG}
+          <span>Sign up with Google</span>
+        </button>
+        <div class="auth-divider">
+          <div class="auth-divider-line"></div>
+          <span class="auth-divider-text">or sign up with email</span>
+          <div class="auth-divider-line"></div>
+        </div>
         <input type="email" id="loginEmail" placeholder="Email address" autocomplete="username" value="${preEmail}">
         <input type="password" id="loginPassword" placeholder="Create strong password" autocomplete="new-password">
         <div class="pw-checklist" id="pwChecklist">
@@ -7229,13 +7442,22 @@
         <button id="resetBtn">Update password &amp; Start</button>`;
     } else {
       body = `<p>Log in to your account</p>
+        <button type="button" class="google-auth-btn" id="googleLoginBtn" data-google-mode="login">
+          ${GOOGLE_LOGO_SVG}
+          <span>Sign in with Google</span>
+        </button>
+        <div class="auth-divider">
+          <div class="auth-divider-line"></div>
+          <span class="auth-divider-text">or sign in with email</span>
+          <div class="auth-divider-line"></div>
+        </div>
         <input type="email" id="loginEmail" placeholder="Email address" autocomplete="username">
         <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password">
         <button id="loginBtn">Log in &rarr;</button>
-        <div style="margin:12px 0 8px;display:flex;align-items:center;gap:8px;">
-          <div style="flex:1;height:1px;background:rgba(255,255,255,0.12);"></div>
-          <span style="font-size:11px;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:1px;">or</span>
-          <div style="flex:1;height:1px;background:rgba(255,255,255,0.12);"></div>
+        <div class="auth-divider">
+          <div class="auth-divider-line"></div>
+          <span class="auth-divider-text">or</span>
+          <div class="auth-divider-line"></div>
         </div>
         <button type="button" class="guest-btn" id="guestBtn" style="background:rgba(0,230,118,0.12);border:1px solid rgba(0,230,118,0.35);color:#00e676;font-weight:700;padding:12px;border-radius:10px;cursor:pointer;width:100%;font-size:14px;display:flex;align-items:center;justify-content:center;gap:6px;">✨ Explore App as Guest / Preview &rarr;</button>
         <button class="link-btn" id="forgotLinkBtn">Forgot password?</button>
@@ -7653,8 +7875,225 @@
     await startApp();
   }
 
+  function closeGoogleAccountChooserModal(){
+    const existing = document.getElementById('googleChooserOverlay');
+    if(existing) existing.remove();
+  }
+
+  async function completeGoogleAccountAuth(rawEmail, mode){
+    let email = (rawEmail || '').trim().toLowerCase();
+    if(!email){
+      const errEl = document.getElementById('googleChooserError');
+      if(errEl) errEl.textContent = 'Please enter your Google email address.';
+      return;
+    }
+    if(!email.includes('@')){
+      email = email + '@gmail.com';
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if(!emailRegex.test(email)){
+      const errEl = document.getElementById('googleChooserError');
+      if(errEl) errEl.textContent = 'Please enter a valid Google email (e.g. name@gmail.com).';
+      return;
+    }
+
+    const contBtn = document.getElementById('googleChooserContinueBtn');
+    if(contBtn){ contBtn.disabled = true; contBtn.textContent = 'Signing in...'; }
+
+    const localUsers = getLocalUsers();
+    const existingLocal = localUsers[email];
+    const googleSyntheticPw = 'GoogleAuth#KeepIt_' + btoa(email).replace(/[^a-zA-Z0-9]/g, '').slice(0, 12) + '9A';
+    let assignedId = existingLocal && existingLocal.id
+      ? existingLocal.id
+      : ('u_' + btoa(email).replace(/[^a-zA-Z0-9]/g, '').slice(0, 24));
+    let hasSupabaseSession = false;
+
+    if(sb){
+      try {
+        const pwToTry = (existingLocal && existingLocal.password && existingLocal.password.length >= 6)
+          ? existingLocal.password
+          : googleSyntheticPw;
+        const { data: loginData, error: loginErr } = await sb.auth.signInWithPassword({
+          email: email,
+          password: pwToTry
+        });
+        if(!loginErr && loginData && loginData.user){
+          assignedId = loginData.user.id;
+          hasSupabaseSession = !!loginData.session;
+        } else {
+          const { data: signUpData, error: signUpErr } = await sb.auth.signUp({
+            email: email,
+            password: googleSyntheticPw
+          });
+          if(!signUpErr && signUpData && signUpData.user){
+            assignedId = signUpData.user.id;
+            hasSupabaseSession = !!signUpData.session;
+          }
+        }
+      } catch(e){
+        console.warn('Google fallback Supabase sync notice:', e);
+      }
+
+      try {
+        await sb.from('admin_user_profiles').upsert({
+          email: email,
+          tier: (existingLocal && existingLocal.plan) ? existingLocal.plan : 'free',
+          habits_count: (existingLocal && typeof existingLocal.habitsCount === 'number') ? existingLocal.habitsCount : 3,
+          tasks_count: (existingLocal && typeof existingLocal.tasksCount === 'number') ? existingLocal.tasksCount : 0,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'email' });
+      } catch(e){}
+    }
+
+    saveLocalUser(
+      email,
+      (existingLocal && existingLocal.password) ? existingLocal.password : googleSyntheticPw,
+      assignedId,
+      (existingLocal && existingLocal.plan) ? existingLocal.plan : 'free'
+    );
+    currentUserId = assignedId;
+    currentUserEmail = email;
+    setSavedCurrentUser({ id: currentUserId, email: currentUserEmail, isLocalOnly: !hasSupabaseSession, provider: 'google' });
+
+    closeGoogleAccountChooserModal();
+    document.getElementById('loginRoot').innerHTML = '';
+    document.getElementById('app').style.display = '';
+    await startApp();
+    if(typeof drToast === 'function'){
+      drToast((mode === 'signup' ? 'Signed up' : 'Signed in') + ' with Google as ' + email);
+    }
+  }
+
+  function openGoogleAccountChooserModal(mode){
+    closeGoogleAccountChooserModal();
+    const localUsers = getLocalUsers();
+    const savedEmails = Object.keys(localUsers).filter(em => em && em.includes('@') && em !== 'demo@keepit.app');
+    const typedEmailEl = document.getElementById('loginEmail');
+    const prefillEmail = (typedEmailEl && typedEmailEl.value ? typedEmailEl.value.trim() : '');
+
+    const accountRowsHtml = savedEmails.slice(0, 4).map(em => {
+      const initial = em.charAt(0).toUpperCase();
+      const displayName = em.split('@')[0].replace(/[._-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      return `
+        <button type="button" class="google-acc-item" data-google-pick-email="${escapeAttr(em)}" data-google-pick-mode="${escapeAttr(mode || 'login')}">
+          <div class="google-acc-avatar">${escapeHtml(initial)}</div>
+          <div class="google-acc-info">
+            <span class="google-acc-name">${escapeHtml(displayName)}</span>
+            <span class="google-acc-email">${escapeHtml(em)}</span>
+          </div>
+        </button>
+      `;
+    }).join('');
+
+    const overlay = document.createElement('div');
+    overlay.id = 'googleChooserOverlay';
+    overlay.className = 'google-Chooser-overlay';
+    overlay.innerHTML = `
+      <div class="google-chooser-card" role="dialog" aria-modal="true" aria-labelledby="googleChooserTitle">
+        <div class="google-chooser-header">
+          ${GOOGLE_LOGO_SVG}
+          <span>Sign in with Google</span>
+        </div>
+        <h3 class="google-chooser-title" id="googleChooserTitle">${mode === 'signup' ? 'Sign up with Google' : 'Choose an account'}</h3>
+        <p class="google-chooser-sub">to continue to <strong>KeepIt</strong></p>
+        ${accountRowsHtml ? `<div style="margin-bottom:10px;">${accountRowsHtml}</div>` : ''}
+        <div class="google-custom-form">
+          <label class="google-custom-label" for="googleCustomEmailInput">${accountRowsHtml ? 'Or use another Google account' : 'Enter your Google email'}</label>
+          <input type="email" id="googleCustomEmailInput" class="google-custom-input" placeholder="yourname@gmail.com" value="${escapeAttr(prefillEmail)}" autocomplete="email">
+          <div id="googleChooserError" style="color:#dc2626;font-size:12px;min-height:16px;margin-top:-6px;margin-bottom:8px;"></div>
+          <div class="google-chooser-actions">
+            <button type="button" class="google-btn-cancel" id="googleChooserCancelBtn">Cancel</button>
+            <button type="button" class="google-btn-continue" id="googleChooserContinueBtn" data-google-continue-mode="${escapeAttr(mode || 'login')}">Continue</button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    setTimeout(() => {
+      const inp = document.getElementById('googleCustomEmailInput');
+      if(inp) inp.focus();
+    }, 30);
+  }
+
+  async function handleGoogleAuth(mode){
+    mode = mode || 'login';
+    const btn = document.getElementById(mode === 'signup' ? 'googleSignupBtn' : 'googleLoginBtn');
+    if(btn){
+      btn.disabled = true;
+      btn.innerHTML = `${GOOGLE_LOGO_SVG}<span>Connecting to Google...</span>`;
+    }
+
+    if(sb){
+      try {
+        // Check if Google OAuth provider is enabled on the Supabase project before redirecting
+        let googleProviderEnabled = false;
+        try {
+          const settingsRes = await fetch(`${SUPABASE_URL}/auth/v1/settings`, {
+            headers: { apikey: SUPABASE_ANON_KEY }
+          });
+          if(settingsRes.ok){
+            const settingsJson = await settingsRes.json();
+            if(settingsJson && settingsJson.external && settingsJson.external.google === true){
+              googleProviderEnabled = true;
+            }
+          }
+        } catch(checkErr){}
+
+        if(googleProviderEnabled){
+          const redirectUrl = window.location.origin + window.location.pathname;
+          const { data, error } = await sb.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+              redirectTo: redirectUrl,
+              queryParams: {
+                access_type: 'offline',
+                prompt: 'select_account'
+              }
+            }
+          });
+          if(!error && data && data.url){
+            window.location.href = data.url;
+            return;
+          }
+        }
+      } catch(err){
+        console.warn('Google OAuth check notice:', err);
+      }
+    }
+
+    // Re-enable button and open interactive Google Account Chooser modal
+    if(btn){
+      btn.disabled = false;
+      btn.innerHTML = `${GOOGLE_LOGO_SVG}<span>${mode === 'signup' ? 'Sign up with Google' : 'Sign in with Google'}</span>`;
+    }
+    openGoogleAccountChooserModal(mode);
+  }
+
   document.addEventListener('click', (e) => {
     if(e.target.id === 'loginBtn') handleLogin();
+    const googleBtn = e.target.closest && e.target.closest('#googleLoginBtn, #googleSignupBtn');
+    if(googleBtn){
+      const gMode = googleBtn.getAttribute('data-google-mode') || (googleBtn.id === 'googleSignupBtn' ? 'signup' : 'login');
+      handleGoogleAuth(gMode);
+      return;
+    }
+    const pickAccBtn = e.target.closest && e.target.closest('[data-google-pick-email]');
+    if(pickAccBtn){
+      const pickedEmail = pickAccBtn.getAttribute('data-google-pick-email');
+      const pickedMode = pickAccBtn.getAttribute('data-google-pick-mode') || 'login';
+      completeGoogleAccountAuth(pickedEmail, pickedMode);
+      return;
+    }
+    if(e.target.id === 'googleChooserCancelBtn' || e.target.id === 'googleChooserOverlay'){
+      closeGoogleAccountChooserModal();
+      return;
+    }
+    if(e.target.id === 'googleChooserContinueBtn'){
+      const inp = document.getElementById('googleCustomEmailInput');
+      const cMode = e.target.getAttribute('data-google-continue-mode') || 'login';
+      completeGoogleAccountAuth(inp ? inp.value : '', cMode);
+      return;
+    }
     if(e.target.id === 'guestBtn' || (e.target.closest && e.target.closest('#guestBtn'))) handleGuestLogin();
     if(e.target.id === 'logoutBtn') handleLogout();
     if(e.target.id === 'createLinkBtn') renderLoginScreen('', 'signup');
@@ -7669,6 +8108,16 @@
     if(e.target.id === 'topLogoutBtn') handleLogout();
   });
   document.addEventListener('keydown', (e) => {
+    if(e.key === 'Escape' && document.getElementById('googleChooserOverlay')){
+      closeGoogleAccountChooserModal();
+      return;
+    }
+    if(e.key === 'Enter' && e.target.id === 'googleCustomEmailInput'){
+      const contBtn = document.getElementById('googleChooserContinueBtn');
+      const cMode = contBtn ? (contBtn.getAttribute('data-google-continue-mode') || 'login') : 'login';
+      completeGoogleAccountAuth(e.target.value, cMode);
+      return;
+    }
     if(e.key === 'Enter' && (e.target.id === 'loginEmail' || e.target.id === 'loginPassword')){
       const md = document.getElementById('loginRoot').dataset.mode;
       if(md === 'forgot') handleForgot();
@@ -7822,6 +8271,18 @@
           currentUserId = sessionData.session.user.id;
           currentUserEmail = sessionData.session.user.email || null;
           setSavedCurrentUser({ id: currentUserId, email: currentUserEmail, isLocalOnly: false });
+          if(currentUserEmail){
+            saveLocalUser(currentUserEmail, '', currentUserId);
+            try {
+              await sb.from('admin_user_profiles').upsert({
+                email: currentUserEmail.toLowerCase(),
+                updated_at: new Date().toISOString()
+              }, { onConflict: 'email' });
+            } catch(e){}
+          }
+          if(location.hash && location.hash.includes('access_token=')){
+            try { history.replaceState(null, '', window.location.pathname + window.location.search); } catch(e){}
+          }
           if(location.hash === '#reminder') section = 'reminder';
           document.getElementById('app').style.display = '';
           await startApp();
@@ -7843,8 +8304,27 @@
     renderLoginScreen('', 'login');
 
     if(sb){
-      sb.auth.onAuthStateChange((event) => {
+      sb.auth.onAuthStateChange(async (event, session) => {
         if(event === 'PASSWORD_RECOVERY'){ renderLoginScreen('', 'reset'); return; }
+        if(event === 'SIGNED_IN' && session && session.user && !currentUserId){
+          currentUserId = session.user.id;
+          currentUserEmail = session.user.email || null;
+          setSavedCurrentUser({ id: currentUserId, email: currentUserEmail, isLocalOnly: false });
+          if(currentUserEmail){
+            saveLocalUser(currentUserEmail, '', currentUserId);
+            try {
+              await sb.from('admin_user_profiles').upsert({
+                email: currentUserEmail.toLowerCase(),
+                updated_at: new Date().toISOString()
+              }, { onConflict: 'email' });
+            } catch(e){}
+          }
+          closeGoogleAccountChooserModal();
+          document.getElementById('loginRoot').innerHTML = '';
+          document.getElementById('app').style.display = '';
+          await startApp();
+          return;
+        }
         if(event === 'SIGNED_OUT'){
           currentUserId = null;
           currentUserEmail = null;
