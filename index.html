@@ -1823,11 +1823,21 @@
   .login-card h1{color:#fff !important;}
   .login-card button.link-btn{background:none !important;color:#7dffb0 !important;font-weight:500;font-size:13px;padding:6px;margin-top:10px;}
   .login-ok{color:#8affc1;font-size:12.5px;margin-top:10px;min-height:16px;}
-  .pw-checklist{text-align:left;font-size:11.5px;color:rgba(255,255,255,0.65);margin:4px 0 12px;padding:8px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:10px;display:flex;flex-direction:column;gap:5px;}
-  .pw-rule{display:flex;align-items:center;gap:6px;transition:all .18s ease;}
-  .pw-rule.met{color:#8affc1;font-weight:600;}
-  .pw-rule .dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.3);flex-shrink:0;}
-  .pw-rule.met .dot{background:#00e676;box-shadow:0 0 6px #00e676;}
+  .pw-rule-inline-err{
+    display:none;
+    color:#ff5252;
+    font-size:11.5px;
+    font-weight:500;
+    text-align:left;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    margin:-4px 0 10px 2px;
+    line-height:1.35;
+  }
+  .pw-rule-inline-err.visible{
+    display:block;
+  }
   .otp-input-field{font-size:24px !important;font-weight:800 !important;letter-spacing:12px !important;text-align:center !important;padding:12px 14px !important;background:rgba(0,0,0,0.4) !important;border:1.5px solid rgba(0,230,118,0.45) !important;color:#fff !important;border-radius:12px !important;}
   .otp-input-field:focus{border-color:#00e676 !important;box-shadow:0 0 16px rgba(0,230,118,0.35) !important;}
   .otp-box{background:rgba(0,230,118,0.08);border:1px solid rgba(0,230,118,0.25);border-radius:10px;padding:10px 12px;margin:12px 0;font-size:12px;color:#d1fae5;line-height:1.45;}
@@ -7366,16 +7376,33 @@
     };
   }
 
-  function updatePasswordValidationUI(pw){
+  function getPasswordRuleErrorText(pw){
     const v = validatePassword(pw);
-    const rLen = document.getElementById('pwRuleLen');
-    const rUp = document.getElementById('pwRuleUpper');
-    const rLow = document.getElementById('pwRuleLower');
-    const rNum = document.getElementById('pwRuleNum');
-    if(rLen) rLen.classList.toggle('met', v.len);
-    if(rUp) rUp.classList.toggle('met', v.upper);
-    if(rLow) rLow.classList.toggle('met', v.lower);
-    if(rNum) rNum.classList.toggle('met', v.num);
+    if(v.isValid) return '';
+    const missing = [];
+    if(!v.len) missing.push('8+ chars');
+    if(!v.upper) missing.push('1 uppercase (A-Z)');
+    if(!v.lower) missing.push('1 lowercase (a-z)');
+    if(!v.num) missing.push('1 number (0-9)');
+    return 'Must include: ' + missing.join(' • ');
+  }
+
+  function updatePasswordValidationUI(pw, forceShow){
+    const errEl = document.getElementById('pwInlineError');
+    if(!errEl) return;
+    if(!pw && !forceShow){
+      errEl.textContent = '';
+      errEl.classList.remove('visible');
+      return;
+    }
+    const msg = getPasswordRuleErrorText(pw || '');
+    if(msg){
+      errEl.textContent = msg;
+      errEl.classList.add('visible');
+    } else {
+      errEl.textContent = '';
+      errEl.classList.remove('visible');
+    }
   }
 
   const GOOGLE_LOGO_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#EA4335" d="M12 10.2v3.9h5.4c-.24 1.24-.96 2.29-2.04 3.01l3.3 2.56c1.92-1.77 3.03-4.38 3.03-7.47 0-.72-.06-1.41-.19-2.1H12z"/><path fill="#4285F4" d="M12 22c2.7 0 4.96-.9 6.62-2.43l-3.3-2.56c-.91.61-2.07.97-3.32.97-2.55 0-4.71-1.72-5.48-4.04H3.11v2.64C4.76 19.86 8.11 22 12 22z"/><path fill="#FBBC05" d="M6.52 13.94c-.2-.6-.31-1.24-.31-1.94s.11-1.34.31-1.94V7.42H3.11C2.41 8.8 2 10.36 2 12s.41 3.2 1.11 4.58l3.41-2.64z"/><path fill="#34A853" d="M12 6.02c1.47 0 2.79.51 3.83 1.5l2.87-2.87C16.95 3.02 14.7 2 12 2 8.11 2 4.76 4.14 3.11 7.42l3.41 2.64c.77-2.32 2.93-4.04 5.48-4.04z"/></svg>`;
@@ -7407,12 +7434,7 @@
         </div>
         <input type="email" id="loginEmail" placeholder="Email address" autocomplete="username" value="${preEmail}">
         <input type="password" id="loginPassword" placeholder="Create strong password" autocomplete="new-password">
-        <div class="pw-checklist" id="pwChecklist">
-          <div class="pw-rule" id="pwRuleLen"><span class="dot"></span> At least 8 characters</div>
-          <div class="pw-rule" id="pwRuleUpper"><span class="dot"></span> 1 uppercase letter (A-Z)</div>
-          <div class="pw-rule" id="pwRuleLower"><span class="dot"></span> 1 lowercase letter (a-z)</div>
-          <div class="pw-rule" id="pwRuleNum"><span class="dot"></span> 1 number (0-9)</div>
-        </div>
+        <div class="pw-rule-inline-err" id="pwInlineError"></div>
         <button id="signupBtn">Send Verification Code &rarr;</button>
         <button class="link-btn" id="backToLoginBtn">Already have an account? Log in</button>`;
     } else if(mode === 'otp'){
@@ -7433,12 +7455,7 @@
     } else if(mode === 'reset'){
       body = `<p>Choose a new strong password.</p>
         <input type="password" id="resetPassword" placeholder="New password" autocomplete="new-password">
-        <div class="pw-checklist" id="pwChecklist">
-          <div class="pw-rule" id="pwRuleLen"><span class="dot"></span> At least 8 characters</div>
-          <div class="pw-rule" id="pwRuleUpper"><span class="dot"></span> 1 uppercase letter (A-Z)</div>
-          <div class="pw-rule" id="pwRuleLower"><span class="dot"></span> 1 lowercase letter (a-z)</div>
-          <div class="pw-rule" id="pwRuleNum"><span class="dot"></span> 1 number (0-9)</div>
-        </div>
+        <div class="pw-rule-inline-err" id="pwInlineError"></div>
         <button id="resetBtn">Update password &amp; Start</button>`;
     } else {
       body = `<p>Log in to your account</p>
@@ -7558,12 +7575,7 @@
 
     const v = validatePassword(password);
     if(!v.isValid){
-      const missing = [];
-      if(!v.len) missing.push('at least 8 characters');
-      if(!v.upper) missing.push('1 uppercase letter (A-Z)');
-      if(!v.lower) missing.push('1 lowercase letter (a-z)');
-      if(!v.num) missing.push('1 number (0-9)');
-      renderLoginScreen('Password requires: ' + missing.join(', ') + '.', 'signup');
+      updatePasswordValidationUI(password, true);
       return;
     }
 
@@ -7765,12 +7777,7 @@
     const pw = document.getElementById('resetPassword').value;
     const v = validatePassword(pw);
     if(!v.isValid){
-      const missing = [];
-      if(!v.len) missing.push('at least 8 characters');
-      if(!v.upper) missing.push('1 uppercase letter (A-Z)');
-      if(!v.lower) missing.push('1 lowercase letter (a-z)');
-      if(!v.num) missing.push('1 number (0-9)');
-      renderLoginScreen('Password requires: ' + missing.join(', ') + '.', 'reset');
+      updatePasswordValidationUI(pw, true);
       return;
     }
     if(sb){
