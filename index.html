@@ -5687,7 +5687,11 @@
   }
 
   // --- Interaction Handlers ---
+  let reminderInitBound = false;
   function reminderInit(){
+    if(reminderInitBound) return;
+    reminderInitBound = true;
+
     // Right-click (PC/Laptop) on any reminder card enters Selection Mode
     document.addEventListener('contextmenu', (e) => {
       const card = e.target.closest('.rm-card.rm-selectable');
@@ -5729,6 +5733,17 @@
 
     // Delegated click events for Reminder section
     document.addEventListener('click', (e) => {
+      // Live Due Reminder Alert Banner actions (Complete / Snooze 5m / Dismiss) can be clicked from any tab
+      const liveActBtn = e.target.closest('[data-live-rm-act]');
+      if(liveActBtn){
+        const act = liveActBtn.getAttribute('data-live-rm-act');
+        const id = liveActBtn.getAttribute('data-id');
+        handleReminderAlertAction(act, id);
+        return;
+      }
+
+      if(section !== 'reminder') return;
+
       if(reminderLongPressTriggered){
         reminderLongPressTriggered = false;
         return;
@@ -5852,7 +5867,7 @@
       }
 
       // 1. Navigation category cards
-      const catCard = e.target.closest('[data-view]');
+      const catCard = e.target.closest('.rm-cat-card[data-view]');
       if(catCard){
         const v = catCard.getAttribute('data-view');
         if(v){
@@ -6223,15 +6238,6 @@
         reminderDateEnabled = true;
         reminderSubModal = null;
         renderReminderSection();
-        return;
-      }
-
-      // Live Due Reminder Alert Banner actions (Complete / Snooze 5m / Dismiss)
-      const liveActBtn = e.target.closest('[data-live-rm-act]');
-      if(liveActBtn){
-        const act = liveActBtn.getAttribute('data-live-rm-act');
-        const id = liveActBtn.getAttribute('data-id');
-        handleReminderAlertAction(act, id);
         return;
       }
 
@@ -6621,6 +6627,7 @@
 
     // Handle input & change events without losing cursor focus
     document.addEventListener('input', (e) => {
+      if(section !== 'reminder') return;
       // Search input: update only the cards list container so cursor never jumps!
       if(e.target.id === 'rmSearchInput'){
         reminderSearchQuery = e.target.value;
@@ -6656,6 +6663,7 @@
     });
 
     document.addEventListener('change', (e) => {
+      if(section !== 'reminder') return;
       const catToggleKey = e.target.getAttribute('data-cat-toggle');
       if(catToggleKey){
         reminderVisibleCategories[catToggleKey] = e.target.checked;
@@ -6688,6 +6696,7 @@
 
     // Handle Enter, Backspace & Escape keys inside Add Reminder & Subpoints
     document.addEventListener('keydown', (e) => {
+      if(section !== 'reminder') return;
       if(e.key === 'Enter' && e.target.id === 'rmNewTitle'){
         if(reminderShowSubpoints){
           e.preventDefault();
@@ -6996,7 +7005,7 @@
       renderGrid();
       return;
     }
-    if(t.matches('[data-view]')){
+    if(t.matches('.view-toggle [data-view]') && section === 'tracker'){
       viewMode = t.getAttribute('data-view');
       renderTitleBlock();
       renderControlsBar();
